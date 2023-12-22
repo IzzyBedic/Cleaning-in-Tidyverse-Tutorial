@@ -1,6 +1,6 @@
 ---
 title: "Cleaning Tutorial"
-author: "Izzy Bedichek"
+author: "Izzy"
 date: "2023-12-01"
 output:
   ioslides_presentation:
