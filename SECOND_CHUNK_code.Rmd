@@ -6,6 +6,7 @@ output:
   html_document: default
   pdf_document: default
 ---
+*Most of the explanation for this chunk is in the presentation*
 
 ```{r setup, include = TRUE}
 knitr::opts_chunk$set(echo = TRUE)
