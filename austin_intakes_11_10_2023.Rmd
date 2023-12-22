@@ -1,0 +1,128 @@
+---
+title: "Austin Intakes Cleaning"
+author: "Izzy Bedichek"
+date: "2023-11-10"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(dplyr)
+library(skimr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+```
+
+## Introduction
+
+Hello and welcome! In this Presentation, I will be going through some different
+ways of cleaning this data set that I got off of Kaggle, called 
+Austin_Animal_Center_Intakes_20231106.csv. 
+
+I chose to clean this data set for my project because it makes me think about 
+how data gets collected and how I would collect the data differently for my own 
+research.
+
+Overall, I think that the ability to clean data is an important skill that
+involved many different types of data. 
+
+## A Brief Reminder
+
+Do NOT edit the original data set, create a data frame to work with and edit 
+that. If you edit the original data set, you could mess with the data in a way
+that creates inaccurate representation of the truth when you try to use the data
+to visualize or analyze a phenomenon or relationship.
+
+If you would like to save your edited data into a new csv or other type of file,
+please rename it something other than the original file name and put it in an 
+appropriate location with an appropriate name. This way you do not overwrite
+your original data and you set yourself up for success in the way you have 
+organized your project.
+
+## Getting Your Data Into R
+
+Download/export the csv file from the website linked in the wiki and put it into
+a folder named csv. Make sure that your RMarkdown file is saved in a folder 
+next to it, preferably with both in a folder named "Austin Data Tutorial" or
+something similar. The .. raises you out of the folder your R Markdown folder is
+in, and the /csv takes you to the csv folder next to it that contains the .csv 
+file.
+
+Please note that this is a continuously updated data set. 
+
+If you would like your results to match mine exactly, you must get rid of all 
+values from before 11/06/2023. We will be able to do this once we convert 
+DateTime from a character into a date.
+
+[Kaggle](https://www.kaggle.com/datasets/aaronschlegel/austin-animal-center-shelter-intakes-and-outcomes)
+
+```{r dataframe}
+knitr::opts_knit$set(root.dir = "../")
+austin_intake_raw <- read.csv("../csv/Austin_Animal_Center_Intakes_20231106.csv")
+head(austin_intake_raw)
+
+austin_intake <- austin_intake_raw
+```
+
+reference: [Go to Slide 25 for Reference](https://www.kirenz.com/slides/xaringan-demo-slides#30)
+[Directory Assistance](https://martinctc.github.io/blog/rstudio-projects-and-working-directories-a-beginner%27s-guide/)
+
+## Cleaning Messy Dates with Lubridate
+
+I am mutating to create new rows instead of overwriting the old row because I 
+want to be able to keep all the tidy and untidy data where I can see them until 
+the very end, so that I can visually compare them next to each other to ensure 
+that I am not doing anything weird to the data when I clean it. This is just
+my personal preference.
+
+```{r dates}
+lubridated_alldates <- austin_intake %>% 
+  mutate(datetime = mdy_hms(DateTime),
+         date = date(datetime),
+         hour = hour(datetime),
+         month = month(datetime),
+         day = day(datetime),
+         year = year(datetime))
+
+austin_intake %>% 
+  select(MonthYear, DateTime) %>% 
+  group_by(MonthYear, DateTime) 
+
+
+lubridated_alldates %>% 
+  select(date, MonthYear, month, year) %>% 
+  group_by(MonthYear, year) %>% 
+  unique() %>% 
+  arrange(date)
+```
+
+ref: [Lubridate](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_lubridate.pdf)
+
+## Using the Lubridated Data to Make Your Data Match Mine
+
+Here we make sure that any date before November 7th, 2023 is included. This 
+ensures that your results will be the same as mine when you run the R script,
+even if the data set that you download is from a date past November 6th, 2023.
+
+```{r samedateasoriginal}
+lubridated <- lubridated_alldates %>% 
+  filter(date < "2023-11-07")
+```
+
+## Making a csv file with cleaned data
+
+ The following was working fine as code, but had trouble when knitting. So,
+ back-tick three times before {r csv} and after ") if you want to run it. 
+`{r csv}
+ write.csv(lubridated, "../csv/lubridated.csv")`
+
+
+[Writing a CSV File](https://datatofish.com/export-dataframe-to-csv-in-r/)
+

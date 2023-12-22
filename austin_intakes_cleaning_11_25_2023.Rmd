@@ -1,0 +1,87 @@
+---
+title: "Austin Intakes Cleaning"
+author: "Izzy Bedichek"
+date: "2023-11-25"
+output: html_document
+---
+
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(dplyr)
+library(skimr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+```
+
+```{r originaldataframe}
+knitr::opts_knit$set(root.dir = "../")
+austin_intake_raw <- read.csv("../csv/Austin_Animal_Center_Intakes_20231106.csv")
+head(austin_intake_raw)
+
+austin_intake <- austin_intake_raw
+```
+
+```{r dataframe}
+knitr::opts_knit$set(root.dir = "../")
+case_whend_raw <- read.csv("../csv/case_whend.csv")
+
+case_whend <- case_whend_raw
+```
+
+## Let's Use Another Command to Tidy Jumbled Column Values
+
+Here I am going to separate the breeds into lists if there is a / between two
+breed names, and create a new column "Mix" for if the breed is a mix.
+
+I will also separate colors and create a new column for solid vs non-solid 
+colored animals
+
+```{r gettingridofslashes}
+no_slashes_breed <- case_whend %>% 
+  separate_wider_delim(col = Breed, 
+                       delim = "/", 
+                       names = c("breed_left", "breed_middle", "breed_right"), 
+                       too_few = "align_start",
+                       cols_remove = FALSE) %>% 
+  mutate(breed_mix = case_when(str_detect(Breed, "(.*) Mix") ~ 
+                                 "Mix",
+                                .default = NA)) %>% 
+  mutate(breed_left = str_remove(breed_left, "Mix"))
+
+no_slashes_breed %>% 
+  select(Breed, breed_left, breed_middle, breed_right, breed_mix)
+
+
+no_slashes_all_colors <- no_slashes_breed %>% 
+  separate_wider_delim(col = Color, 
+                       delim = "/", 
+                       names = c("color_left", "color_middle", "color_right"), 
+                       too_few = "align_start",
+                       cols_remove = FALSE) %>% 
+  mutate(color_left = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_left),
+         color_middle = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_middle),
+         color_right = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_right))
+
+no_slashes_all_colors %>% 
+  select(Color, color_left, color_middle, color_right)
+
+```
+
+```{r csv}
+write.csv(no_slashes_all_colors, "../csv/mostly_cleaned.csv")
+```
+
+ref: 
+?separate
+separate_wider_delim

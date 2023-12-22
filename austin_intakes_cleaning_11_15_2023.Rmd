@@ -1,0 +1,180 @@
+---
+title: "Austin Intakes Cleaning"
+author: "Izzy Bedichek"
+date: "2023-11-20"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+library(dplyr)
+library(skimr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+```
+
+```{r originaldataframe}
+knitr::opts_knit$set(root.dir = "../")
+austin_intake_raw <- read.csv("../csv/Austin_Animal_Center_Intakes_20231106.csv")
+head(austin_intake_raw)
+
+austin_intake <- austin_intake_raw
+```
+
+ 
+```{r dataframe}
+knitr::opts_knit$set(root.dir = "../")
+lubridated_raw <- read.csv("../csv/lubridated.csv")
+
+lubridated <- lubridated_raw
+```
+
+### Cleaning Messy Datasets with Stringr
+
+```{r strings}
+stringed <- lubridated %>% 
+  mutate(Sex.upon.Intake = na_if(Sex.upon.Intake, "Unknown"),
+         intake_neuter_spay_status = str_trim(as.character(str_extract_all(Sex.upon.Intake, "(.*) "))),
+         intake_sex = str_trim(as.character(str_extract_all(Sex.upon.Intake, " (.*)")))) 
+
+stringed %>% 
+  select(intake_neuter_spay_status, intake_sex, Sex.upon.Intake, Animal.ID:year)
+  
+```
+
+ref: [https://dplyr.tidyverse.org/reference/na_if.html]
+### Cleaning Messy Datasets with Case_When
+
+ref: https://dplyr.tidyverse.org/reference/case_when.html, https://gist.github.com/avallecam/bcdb8ca98b40e7276a7269b72e564d85,
+https://stackoverflow.com/questions/63344455/if-else-statement-to-check-if-any-numbers-are-negative-in-r
+
+```{r negativeage}
+case_whend_negative_age <- stringed %>% 
+  mutate(number_age_year = case_when(str_detect(Age.upon.Intake, "(.*) years") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) ")),
+                                str_detect(Age.upon.Intake, "(.*) months") ~ 
+                                  as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/12,
+                                str_detect(Age.upon.Intake, "(.*) weeks") ~ 
+                                  as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/(12*4),
+                                .default = 999)) 
+
+case_whend_negative_age %>% 
+  select(Name, number_age_year, Age.upon.Intake, date) %>% 
+  arrange(number_age_year) # looking for any 999s
+
+```
+
+I found negative ages, why? Here I looked for the names "Montopolis" and "Gorda" 
+in austin_intake, in case my data cleaning created negative values
+
+# making it easier to compare:
+```{r compare}
+
+
+austin_intake %>% 
+  select(Age.upon.Intake, Name, DateTime) %>% 
+  filter(Name == c("Montopolis", "Rascal", "Gorda")) %>% 
+  arrange(Name, DateTime)
+
+case_whend_negative_age %>% 
+  select(number_age_year, Age.upon.Intake, Name, DateTime) %>% 
+  filter(Name == c("Montopolis", "Rascal", "Gorda")) %>% 
+  arrange(Name, DateTime)
+
+```
+ref: https://stackoverflow.com/questions/38036680/align-multiple-tables-side-by-side
+
+I want to check where the ages got confused, I am going to check stringed
+
+```{r verifyingage}
+
+austin_intake %>% 
+  select(Age.upon.Intake, Name, DateTime) %>% 
+  filter(Name == c("Montopolis", "Rascal", "Gorda")) %>% 
+  arrange(Name, DateTime)
+
+stringed %>% 
+  select(Age.upon.Intake, Name, DateTime) %>% 
+  filter(Name == c("Montopolis", "Rascal", "Gorda")) %>% 
+  arrange(Name, DateTime)
+
+```
+
+I checked a couple names and dates and it looks like austin_intake and stringed
+don't have different/changed ages
+
+```{r agefix}
+case_whend_negative_age <- stringed %>% 
+  mutate(number_age_year = 
+           case_when(str_detect(Age.upon.Intake, "(.*) years") ~ 
+                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) ")),
+                                str_detect(Age.upon.Intake, "(.*) months") ~ 
+                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/12,
+                                str_detect(Age.upon.Intake, "(.*) weeks") ~ 
+                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/(12*4),
+                                .default = 999)) 
+```
+
+I think that maybe people use the negative sign to mean "less than," as in
+the animal is less than a year old?
+
+```{r agehypothesis}
+
+case_whend_negative_age %>% 
+  select(number_age_year, Name, date, Age.upon.Intake) %>% 
+  filter((number_age_year < 0) == TRUE) %>% 
+  arrange(Name, date)
+
+```
+
+It looks like all of the negative values are -3, -2, or -1. 
+
+There are also only 12 negative values. As such, since there is no way to 
+confirm my idea, but it doesn't look like taking out the 12 negative values 
+would impact the other 156,975 data points and my idea seems like a reasonable 
+guess, I am going to replace all negative values with 999
+
+```{r numberagetidy}
+case_whend <- stringed %>% 
+  mutate(number_age_year = case_when(str_detect(Age.upon.Intake, "(.*) years") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) ")),
+                                     str_detect(Age.upon.Intake, "(.*) year") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) ")),
+                                     str_detect(Age.upon.Intake, "(.*) months") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/12,
+                                     str_detect(Age.upon.Intake, "(.*) month") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/12,
+                                     str_detect(Age.upon.Intake, "(.*) weeks") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/(12*4),
+                                     str_detect(Age.upon.Intake, "(.*) week") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, "(.*) "))/(12*4),
+                                     str_detect(Age.upon.Intake, "(.*) days") ~ 
+                                       as.numeric(0),
+                                     str_detect(Age.upon.Intake, "(.*) day") ~ 
+                                       as.numeric(0),
+                                     .default = 999)) %>% 
+  mutate(number_age_year = case_when(number_age_year >= 0 ~ number_age_year,
+                                     number_age_year < 0 ~ 999,
+                                     .default = number_age_year))
+
+case_whend %>% 
+  select(number_age_year, Name, date, Animal.Type, Age.upon.Intake) %>% 
+  arrange(desc(number_age_year))
+
+case_whend %>% 
+  select(number_age_year, Name, date, Animal.Type, Age.upon.Intake) %>% 
+  arrange(number_age_year)
+
+```
+
+ 
+```{r csv}
+write.csv(case_whend, "../csv/case_whend.csv")
+```

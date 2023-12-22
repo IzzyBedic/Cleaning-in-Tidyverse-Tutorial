@@ -1,0 +1,495 @@
+---
+title: "Cleaning Tutorial"
+author: "Izzy Bedichek"
+date: "2023-12-01"
+output:
+  ioslides_presentation:
+    widescreen: yes
+---
+
+## What Packages Will We Use?
+
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, message = FALSE, warning = FALSE}
+library(dplyr)
+library(skimr)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+library(DT)
+```
+
+## Introduction
+
+This is a tutorial!
+
+- We'll start on Kaggle to get Austin_Animal_Center_Intakes_20231106.csv
+- We'll clean the data as best we can
+- We'll show the difference by making some figures that might not have been possible to make before cleaning
+
+<div class = "notes">
+
+Hello and welcome! In this Presentation, I will be going through some different
+ways of cleaning this dataset that I got off of Kaggle, called 
+Austin_Animal_Center_Intakes_20231106.csv. Then, I will use the cleaned data set
+to create some visualizations.
+
+I chose to clean and visualize this data set for my project because I think it 
+is important to understand why and how data gets turned from an input to an 
+output. Not only does it inspire me to make the cleaned data more efficient to 
+use. But, it also makes me think about how the data was collected and how I 
+would collect the data differently for my own research.
+
+Overall, I think that the ability to clean data is an important skill that
+involved many different types of data. 
+
+</div>
+
+[IO Slides: How to Use](https://garrettgman.github.io/rmarkdown/ioslides_presentation_format.html)
+
+## A Brief Reminder
+
+Do NOT edit the original data set, create a data frame to work with and edit 
+that.
+
+## Getting the Data into R
+
+
+```{r dataframe}
+knitr::opts_knit$set(root.dir = "../")
+austin_intake_raw <- read.csv("../csv/Austin_Animal_Center_Intakes_20231106.csv")
+
+austin_intake <- austin_intake_raw
+```
+
+1. Export the "Intakes" file from [Kaggle](https://www.kaggle.com/datasets/aaronschlegel/austin-animal-center-shelter-intakes-and-outcomes). If the link doesn't work it is written out: https://www.kaggle.com/datasets/aaronschlegel/austin-animal-center-shelter-intakes-and-outcomes
+2. Put the file into a folder named csv, then put that folder into a folder for this project
+3. Make sure your Rmd file is in a folder *next to* the csv file
+4. This allows the code to work for your laptop the same way it does for mine
+
+<div class = "notes">
+
+Download/export the csv file from the website linked in the wiki:
+and put it into a folder named csv. Make sure that your RMarkdown file is 
+saved in a folder next to it, preferably with both in a folder named 
+"Austin Data Tutorial" or something similar. The .. raises you out of the folder 
+your R Markdown folder is in, and the /csv takes you to the csv folder next to 
+it that contains the .csv file.
+
+Please note that this is a continuously updated data set. 
+
+If you would like your results to match mine exactly, you must get rid of all 
+values from before 11/06/2023. We will be able to do this once we convert 
+DateTime from a character into a date.
+</div>
+## Quick Note
+
+- This is a _continuously updated data set_
+- My data is from 11/06/2023, but what you download will be from the current date
+
+<div class = "notes">
+
+Please note that this is a continuously updated data set. 
+
+If you would like your results to match mine exactly, you must get rid of all 
+values from before 11/06/2023. We will be able to do this once we convert 
+DateTime from a character into a date.
+</div>
+
+## Looking at the Data
+
+Here is the code for the following figure: 
+
+```{r tablecode, echo = TRUE, results='hide'}
+austin_intake %>% 
+  head(30) %>% 
+  datatable(rownames = FALSE, 
+            width = "80%", 
+            height = "90%", 
+            options = list(pageLength = 5, scrollX = "600px", scrollY = "565px"), 
+            fillContainer = TRUE) %>% 
+  formatStyle(columns = 1:12, fontSize = '70%')
+```
+
+<br>
+<br>
+
+[KableExtra Usage](https://stackoverflow.com/questions/63379301/rmarkdown-how-to-resize-a-table-to-be-displayed-into-a-ioslides-presentation)
+[DT Interactive Table](https://stackoverflow.com/questions/69101146/how-can-i-fit-an-interactive-table-using-ioslides-presentation-and-dt-package)
+[DT Font Size](https://stackoverflow.com/questions/44101055/changing-font-size-in-r-datatables-dt)
+[Scroll Height Fix](https://stackoverflow.com/questions/68362613/how-to-increase-datatable-height-in-r-markdown)
+
+<div class = "notes">
+
+Do NOT edit the original data set, create a data frame to work with and edit 
+that. If you edit the original data set, you could mess with the data in a way
+that creates inaccurate representation of the truth when you try to use the data
+to visualize or analyze a phenomenon or relationship.
+
+If you would like to save your edited data into a new csv or other type of file,
+please rename it something other than the original file name and put it in an 
+appropriate location with an appropriate name. This way you do not overwrite
+your original data and you set yourself up for success in the way you have 
+organized your project.
+
+</div>
+
+## Figure
+
+```{r tableshow, echo=FALSE}
+austin_intake %>% 
+  head(30) %>% 
+  datatable(rownames = FALSE, 
+            width = "80%", 
+            height = "90%", 
+            options = list(pageLength = 5, scrollX = "600px", scrollY = "565px"), 
+            fillContainer = TRUE) %>% 
+  formatStyle(columns = 1:12, fontSize = '70%')
+```
+
+## Cleaning Messy Dates with Lubridate
+Examples of lubridate functions:
+
+- `mdy_hms` turns a character string into date format, you can also do `ms` or `dm`
+- `date()` turns a date into y/m/d format
+  - Extra information like time of day gets snipped off
+- `hour()` extracts the hour from a date 
+- etc.
+
+<div class = "notes">
+
+I am mutating to create new rows instead of overwriting the old row because I 
+want to be able to keep all the tidy and untidy data where I can see them until 
+the very end, so that I can visually compare them next to each other to ensure 
+that I am not doing anything weird to the data when I clean it. This is just
+my personal preference.
+
+These are how you use a couple of the lubridate functions. I am using them to 
+change a character column into a date column. The `mdy_hms()` function can also
+be written `ymd_hms` or `dmy_hms`, it is depending on your user input to tell
+it the intended order of the date format. For instance, the date 1/2/2003 could
+be either January 2nd or February 1st. If you code `md` it will change the first 
+values down the row to be the month. So in this case, it would be January 2nd. 
+
+</div>
+
+```{r datescode, echo = TRUE, results='hide'}
+lubridated_alldates <- austin_intake %>% 
+  mutate(datetime = mdy_hms(DateTime),
+         date = date(datetime),
+         hour = hour(datetime),
+         month = month(datetime),
+         day = day(datetime),
+         year = year(datetime))
+```
+## Results of Lubridate
+
+<div style="width: 100%;">
+
+<div style="width: 45%; float: left;">
+```{r datesshowintake, echo = FALSE, warning=FALSE}
+austin_intake %>% 
+  select(MonthYear, DateTime) %>% 
+  group_by(MonthYear, DateTime) %>% 
+  datatable(rownames = FALSE, 
+            width = "100%", 
+            height = "90%", 
+            options = list(pageLength = 5, 
+                           scrollX = "600px", 
+                           scrollY = "565px"),
+            caption = "Original Variables: In chr Format") %>% 
+  formatStyle(columns = 1:2, 
+              fontSize = '70%', 
+              backgroundColor = styleRow(c(1,3,5,7,9), "#edf8b1"))
+```
+</div>
+
+<div style="width: 45%; float: right;">
+```{r datesshowlubridate, echo=FALSE, warning=FALSE}
+
+lubridated_alldates %>% 
+  select(date, month, year) %>% 
+  group_by(year) %>% 
+  unique() %>% 
+  arrange(date) %>% 
+  datatable(rownames = FALSE, 
+            width = "100%", 
+            height = "90%", 
+            options = list(pageLength = 5, 
+                           scrollX = "600px", 
+                           scrollY = "565px"),
+            caption = "Lubridated Variables: In date Format") %>% 
+  formatStyle(columns = 1:4, 
+              fontSize = '70%', 
+              backgroundColor = styleRow(c(1,3,5,7,9), "#7fcdbb"))
+```
+</div>
+
+## Using the Lubridated Data to Make Your Data Match Mine
+
+Here we make sure that any date before November 7th, 2023 is included. This 
+ensures that your results will be the same as mine when you run the R script,
+even if the data set that you download is from a date past November 6th, 2023.
+
+```{r samedateasoriginal}
+lubridated <- lubridated_alldates %>% 
+  filter(date < "2023-11-07")
+```
+
+## Cleaning Messy Datasets with Stringr: Rationale
+
+```{r sexuponintakeunique}
+unique(lubridated$Sex.upon.Intake)
+```
+
+
+- Breaking down: `as.character(str_extract_all(Sex.upon.Intake, "(.*) "))`
+- `Sex.upon.Intake` is a column where "NULL", "Unknown", "neutered male", 
+"spayed female", "intact male", and "intact female" are the types of observations
+- Someone might want to create a visualization or analyze something about solely 
+gender or whether an animal is spayed or neutered
+
+<div class = "notes">
+
+We looked at dates, but there are many types of variables in this data set. What
+about the messy character columns? Well, here we are going to divide 
+`Sex.upon.Intake` into two columns. You could also use separate(). However, this
+worked and I want to learn stringr.
+
+</div>
+
+## Cleaning Messy Datasets with Stringr: Method
+
+- Inputs of `str_extract_all()`: `lubridated`, `Sex.upon.Intake`, and `"(* ) "`
+- `"(* ) "` is the pattern that we are searching `Sex.upon.Intake` for, if R 
+checks an observation and sees a string of characters of any length (`(.*)`) 
+followed be a space `" "`, it will take that character and space and put them 
+into a new column labeled `intake_neuter_spay_status`
+- `str_trim()` removes white space at the end of a string of characters
+
+```{r strings}
+stringed <- lubridated %>% 
+  mutate(Sex.upon.Intake = na_if(Sex.upon.Intake, "Unknown"),
+         intake_neuter_spay_status = 
+           str_trim(as.character(str_extract_all(Sex.upon.Intake, "(.*) "))),
+         intake_sex = 
+           str_trim(as.character(str_extract_all(Sex.upon.Intake, " (.*)")))) 
+```
+
+<div class = "notes">
+`lubridated` is the original data frame that contextualizes `Sex.upon.Intake` 
+when it is put inside `str_extract_all()`, so that R can find `Sex.upon.Intake`
+
+`str_extract_all()` takes a pattern and a string.
+
+`str_trim()` gets rid of the space used to identify whether the string extracted
+was to be the first part of the Sex.upon.Intake observation. For example, "spayed."
+Or, the second part. For example, "female."
+
+</div>
+
+## Demo
+
+```{r stringfigurecode, echo = TRUE, results='hide'}
+stringed %>% 
+  select(intake_neuter_spay_status, intake_sex, Sex.upon.Intake) %>% 
+  head(10) 
+```
+
+```{r stringshow, echo=FALSE, warning=FALSE}
+stringed %>% 
+  select(intake_neuter_spay_status, intake_sex, Sex.upon.Intake) %>% 
+  datatable(rownames = FALSE, 
+            width = "100%", 
+            height = "90%", 
+            options = list(pageLength = 5, 
+                           scrollX = "600px", 
+                           scrollY = "565px"),
+            caption = "Variables Cleaned with Stringr: In Tidy Columns") %>% 
+  formatStyle(columns = 1:3, 
+              fontSize = '70%', 
+              backgroundColor = styleRow(c(1,3,5,7,9), "lightblue"))
+```
+
+
+## Let's Use Another Command to Tidy Jumbled Column Values
+
+How to Use: `str_detect()` 
+
+1. `str_detect` & `str_extract_all` both take a string and a pattern
+2. `str_detect` returns TRUE or FALSE
+3. So, if TRUE, extract the number and put it under the number_age_year column.
+If the number seems to be unknown, put 999. If they were days old, put them down
+as zero (a baby).
+
+<div class = "notes">
+
+`str_detect`, like `str_extract_all` takes a string and a pattern. Instead of 
+the output being the parts of the string that match the pattern, however, `str_detect`'s
+output is a logical (TRUE or FALSE). This fits perfectly into `case_when()`, which
+takes a logical TRUE or FALSE expression and returns one thing for TRUE and .default
+for FALSE.
+
+</div>
+
+## Tidying the Code for Age
+
+```{r numberagetidy}
+case_whend <- stringed %>% 
+  mutate(number_age_year = case_when(str_detect(Age.upon.Intake, "(.*) years") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) ")),
+                                     str_detect(Age.upon.Intake, "(.*) year") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) ")),
+                                     str_detect(Age.upon.Intake, "(.*) months") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) "))/12,
+                                     str_detect(Age.upon.Intake, "(.*) month") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) "))/12,
+                                     str_detect(Age.upon.Intake, "(.*) weeks") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) "))/(12*4),
+                                     str_detect(Age.upon.Intake, "(.*) week") ~ 
+                                       as.numeric(str_extract_all(Age.upon.Intake, 
+                                                                  "(.*) "))/(12*4),
+                                     str_detect(Age.upon.Intake, "(.*) days") ~ 
+                                       as.numeric(0),
+                                     str_detect(Age.upon.Intake, "(.*) day") ~ 
+                                       as.numeric(0),
+                                     .default = 999)) 
+
+```
+
+## Tidying the Code for Age Continued
+
+```{r numberagetidycontninued}
+case_whend <- case_whend %>% 
+  mutate(number_age_year = case_when(number_age_year >= 0 ~ number_age_year,
+                                     number_age_year < 0 ~ 999,
+                                     .default = number_age_year))
+```
+
+## Demo
+
+```{r numberagetidyfigurecode, echo=TRUE, results='hide'}
+case_whend %>% 
+  select(number_age_year, Age.upon.Intake) %>% 
+  head(20) 
+```
+
+```{r numberagetidyfigureshow, echo=FALSE}
+case_whend %>% 
+  select(number_age_year, Age.upon.Intake) %>% 
+  head(15) %>% 
+  datatable(rownames = FALSE, 
+            width = "100%", 
+            height = "90%", 
+            options = list(pageLength = 10, 
+                           scrollX = "600px", 
+                           scrollY = "565px"),
+            caption = "Variables Cleaned with Stringr: In Tidy Columns") %>% 
+  formatStyle(columns = 1:3, 
+              fontSize = '70%', 
+              backgroundColor = styleRow(c(1,3,5,7,9, 11, 13), "lightgreen"))
+
+```
+
+## Cursory Look at Tidying Breed
+ 
+ We already learned this in class, so I will not explain it. This is the end
+ of my presentation.
+ 
+```{r gettingridofslashesbreed}
+no_slashes_breed <- case_whend %>% 
+  separate_wider_delim(col = Breed, 
+                       delim = "/", 
+                       names = c("breed_left", "breed_middle", "breed_right"), 
+                       too_few = "align_start",
+                       cols_remove = FALSE) %>% 
+  mutate(breed_mix = case_when(str_detect(Breed, "(.*) Mix") ~ 
+                                 "Mix",
+                                .default = NA)) %>% 
+  mutate(breed_left = str_remove(breed_left, "Mix"))
+
+```
+
+## Now With Color
+
+```{r gettingridofslashescolor}
+
+no_slashes_all_colors <- no_slashes_breed %>% 
+  separate_wider_delim(col = Color, 
+                       delim = "/", 
+                       names = c("color_left", "color_middle", "color_right"), 
+                       too_few = "align_start",
+                       cols_remove = FALSE) %>% 
+  mutate(color_left = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_left),
+         color_middle = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_middle),
+         color_right = case_when(Color == "Tricolor" ~
+                     "Random",
+                     .default = color_right))
+
+```
+
+## Some Visualizations Now That We Have Tidy Data
+
+```{r ggplotcode, echo=TRUE, fig.show='hide'}
+no_slashes_all_colors %>% 
+  count(breed_mix) %>% 
+  ggplot(aes(breed_mix, n)) +
+  geom_col() +
+  labs(title = 
+         "Ratio of Mixed Animals to Not Mixed Animals", 
+       x = "Are They a Mix?", y = "Number")
+```
+## Figure for Mixed Dogs Compared to Not Mixed Dogs
+
+```{r ggplotshow, echo=FALSE}
+no_slashes_all_colors %>% 
+  filter(Animal.Type == "Dog") %>% 
+  count(breed_mix) %>% 
+  ggplot(aes(breed_mix, n)) +
+  geom_col() +
+  labs(title = 
+         "Mixed Dogs Compared to Not Mixed Dogs", 
+       x = "Are They a Mix?", y = "Number")
+```
+
+## More Specific: Age Distribution of Female Dog Intakes in 2020
+
+```{r ggplotspecificcode, echo=TRUE, fig.show='hide'}
+no_slashes_all_colors %>% 
+  filter(Animal.Type == "Dog", year == 2020, intake_sex == "Female") %>% 
+  ggplot(aes(number_age_year)) +
+  geom_density() +
+  labs(title = 
+         "Age Distribution of Female Dog Intakes in 2020", 
+       x = "Age", y = "Number of Female Dog Intakes in 2020")
+```
+## Figure for Age Distribution of Female Dog Intakes in 2020
+
+```{r ggplotspecificshow, echo=FALSE}
+no_slashes_all_colors %>% 
+  filter(Animal.Type == "Dog", year == 2020, intake_sex == "Female") %>% 
+  ggplot(aes(number_age_year)) +
+  geom_density() +
+  labs(title = 
+         "Age Distribution of Female Dog Intakes in 2020", 
+       x = "Age", y = "Number of Female Dog Intakes in 2020")
+```
+
+## Sources Not Able to Be Cited on Previous Slides
+1. [Lubridate](https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_lubridate.pdf)
+2. [IOSlides](https://bookdown.org/yihui/rmarkdown/ioslides-presentation.html)
+3. [DT Tables Next to Each Other](https://stackoverflow.com/questions/46059487/rmarkdown-two-datatables-next-to-each-other)
+4. [ColorBrewer](https://colorbrewer2.org/#type=sequential&scheme=YlGnBu&n=3)
