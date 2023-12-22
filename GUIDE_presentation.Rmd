@@ -86,6 +86,7 @@ If you would like your results to match mine exactly, you must get rid of all
 values from before 11/06/2023. We will be able to do this once we convert 
 DateTime from a character into a date.
 </div>
+
 ## Quick Note
 
 - This is a _continuously updated data set_
@@ -402,9 +403,6 @@ case_whend %>%
 
 ## Cursory Look at Tidying Breed
  
- We already learned this in class, so I will not explain it. This is the end
- of my presentation.
- 
 ```{r gettingridofslashesbreed}
 no_slashes_breed <- case_whend %>% 
   separate_wider_delim(col = Breed, 
@@ -476,6 +474,7 @@ no_slashes_all_colors %>%
          "Age Distribution of Female Dog Intakes in 2020", 
        x = "Age", y = "Number of Female Dog Intakes in 2020")
 ```
+
 ## Figure for Age Distribution of Female Dog Intakes in 2020
 
 ```{r ggplotspecificshow, echo=FALSE}
